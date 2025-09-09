@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+
+# Herramientas/Cache
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Datos locales (Qdrant local)
+.data/
+
+# Terraform artefactos locales
+infra/terraform/**/.terraform/
+infra/terraform/**/*.tfstate*
+infra/terraform/**/.terraform.lock.hcl
+
+# VSCode
+.vscode/
