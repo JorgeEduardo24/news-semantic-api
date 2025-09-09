@@ -36,3 +36,71 @@ resource "google_container_cluster" "autopilot" {
 
   depends_on = [google_project_service.services]
 }
+
+
+# WIF: Pool + Provider OIDC de GitHub
+resource "google_iam_workload_identity_pool" "github_pool" {
+  workload_identity_pool_id = "github-pool"
+  display_name              = "GitHub OIDC Pool"
+  depends_on                = [google_project_service.services]
+}
+
+resource "google_iam_workload_identity_pool_provider" "github_provider" {
+  workload_identity_pool_id          = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
+  workload_identity_pool_provider_id = "github"
+  display_name                       = "GitHub Provider"
+
+  # Mapeos de claims -> atributos opcionales
+  attribute_mapping = {
+    "google.subject"       = "assertion.sub"
+    "attribute.repository" = "assertion.repository"
+    "attribute.ref"        = "assertion.ref"
+    "attribute.actor"      = "assertion.actor"
+  }
+
+  # Condición que usa *claims reales* del token OIDC de GitHub
+  attribute_condition = "assertion.repository == '${var.github_repo}' && assertion.ref == '${var.github_ref}'"
+
+  oidc {
+    issuer_uri = "https://token.actions.githubusercontent.com"
+  }
+
+  depends_on = [google_project_service.services]
+}
+
+
+# Service Account que asumirá GitHub Actions
+resource "google_service_account" "ci_deployer" {
+  account_id   = "ci-deployer"
+  display_name = "CI Deployer"
+}
+
+# Permisos mínimos para build+deploy
+resource "google_project_iam_member" "ar_writer" {
+  project    = var.project_id
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:${google_service_account.ci_deployer.email}"
+  depends_on = [google_project_service.services]
+}
+
+resource "google_project_iam_member" "gke_deployer" {
+  project    = var.project_id
+  role       = "roles/container.developer"
+  member     = "serviceAccount:${google_service_account.ci_deployer.email}"
+  depends_on = [google_project_service.services]
+}
+
+# Binding WIF: permite a tu repo asumir la SA (reemplaza OWNER/REPO)
+
+resource "google_service_account_iam_member" "wif_binding" {
+  service_account_id = google_service_account.ci_deployer.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${var.github_repo}"
+}
+
+
+data "google_project" "project" {}
+output "wif_provider" {
+  value = "projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.github_pool.workload_identity_pool_id}/providers/${google_iam_workload_identity_pool_provider.github_provider.workload_identity_pool_provider_id}"
+}
+output "ci_service_account" { value = google_service_account.ci_deployer.email }
