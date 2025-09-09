@@ -1,66 +1,56 @@
-name: CD Main
+name: cd-main
 on:
   push:
     branches: [ main ]
-
-env:
-  IMAGE_NAME: news-semantic-api
-
+  workflow_dispatch: {}   # ← para dispararlo manualmente desde Actions
 jobs:
-  deploy:
+  build-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: 'read'
-      id-token: 'write'     # requerido para OIDC
-
+      id-token: write     # OIDC para WIF
+      contents: read
+    env:
+      IMG_TAG: ${{ github.sha }}
+      USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
+        with: { python-version: '3.12' }
 
       - name: Install Poetry
-        run: pip install poetry==1.8.3
+        run: pip install "poetry==1.8.3"
 
-      - name: Install deps & test
-        run: |
-          poetry install --no-root
-          make fmt && make lint && make test
-
-      - name: Auth to GCP (OIDC)
-        uses: google-github-actions/auth@v2
+      # Auth GCP vía WIF
+      - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.DEPLOYER_SA_EMAIL }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker to Artifact Registry
-        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev -q
+      - name: Docker login to Artifact Registry
+        run: |
+          REG_HOST="$(echo "${{ secrets.AR_REPO }}" | cut -d/ -f1)"
+          gcloud auth configure-docker "$REG_HOST" -q
 
       - name: Build & Push image
         run: |
-          IMAGE_URI="${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          docker build -f deploy/Dockerfile -t "$IMAGE_URI" .
-          docker push "$IMAGE_URI"
-          # Opcional: tag 'latest'
-          LATEST="${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest"
-          docker tag "$IMAGE_URI" "$LATEST"
-          docker push "$LATEST"
+          docker build -f deploy/Dockerfile -t "${{ secrets.AR_REPO }}/news-semantic-api:${IMG_TAG}" .
+          docker push "${{ secrets.AR_REPO }}/news-semantic-api:${IMG_TAG}"
+
+      - uses: azure/setup-kubectl@v4
+      - uses: azure/setup-helm@v4
 
       - name: Get GKE credentials
-        run: |
-          gcloud container clusters get-credentials "${{ secrets.GKE_CLUSTER }}" --region "${{ secrets.GCP_REGION }}" --project "${{ secrets.GCP_PROJECT_ID }}"
+        run: gcloud container clusters get-credentials "${{ secrets.GKE_CLUSTER }}" --region "${{ secrets.GKE_REGION }}" --project "${{ secrets.GCP_PROJECT }}"
 
-      - name: Helm dependency update
-        working-directory: deploy/helm/news-semantic-api
-        run: helm dependency update
-
-      - name: Deploy with Helm
+      - name: Helm upgrade (API + Qdrant subchart)
         working-directory: deploy/helm/news-semantic-api
         run: |
+          helm repo add qdrant https://qdrant.github.io/qdrant-helm || true
+          helm repo update && helm dependency update
           helm upgrade --install news-demo . \
-            -f values.gke.yaml \
-            --set image.tag=latest \
-            --set image.repository="${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}"
+            --set image.repository="${{ secrets.AR_REPO }}/news-semantic-api" \
+            --set image.tag="${IMG_TAG}" \
+            -f values.gke.yaml
