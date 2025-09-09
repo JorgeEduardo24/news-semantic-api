@@ -7,50 +7,54 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write     # OIDC para WIF
       contents: read
-    env:
-      IMG_TAG: ${{ github.sha }}
-      USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
+      id-token: write   # necesario para WIF
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-
-      - name: Install Poetry
-        run: pip install "poetry==1.8.3"
-
-      # Auth GCP vía WIF
-      - uses: google-github-actions/auth@v2
+      # (ya lo tienes) Autenticación con WIF
+      - id: auth
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
+      # (ya lo tienes) gcloud
       - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          install_components: 'gke-gcloud-auth-plugin'  # <<--- IMPORTANTE
 
-      - name: Docker login to Artifact Registry
+      # (opcional) por si alguna imagen del runner no trae components:
+      - name: Ensure GKE auth plugin present
         run: |
-          REG_HOST="$(echo "${{ secrets.AR_REPO }}" | cut -d/ -f1)"
-          gcloud auth configure-docker "$REG_HOST" -q
+          gcloud components install gke-gcloud-auth-plugin --quiet || \
+          (sudo apt-get update && sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin)
 
-      - name: Build & Push image
-        run: |
-          docker build -f deploy/Dockerfile -t "${{ secrets.AR_REPO }}/news-semantic-api:${IMG_TAG}" .
-          docker push "${{ secrets.AR_REPO }}/news-semantic-api:${IMG_TAG}"
-
+      # kubectl/helm (pueden seguir tus pasos actuales)
       - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.29.6
       - uses: azure/setup-helm@v4
 
+      # Obtener credenciales del cluster (puedes mantener tu paso actual o usar esta acción)
       - name: Get GKE credentials
-        run: gcloud container clusters get-credentials "${{ secrets.GKE_CLUSTER }}" --region "${{ secrets.GKE_REGION }}" --project "${{ secrets.GCP_PROJECT }}"
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_REGION }}
 
+      # Helm upgrade (exporta la variable para forzar el plugin)
       - name: Helm upgrade (API + Qdrant subchart)
-        working-directory: deploy/helm/news-semantic-api
+        env:
+          USE_GKE_GCLOUD_AUTH_PLUGIN: "True"      # <<--- IMPORTANTE
         run: |
           helm repo add qdrant https://qdrant.github.io/qdrant-helm || true
-          helm repo update && helm dependency update
-          helm upgrade --install news-demo . \
+          helm repo update
+          helm dependency update deploy/helm/news-semantic-api
+          helm upgrade --install news-demo deploy/helm/news-semantic-api \
             --set image.repository="${{ secrets.AR_REPO }}/news-semantic-api" \
-            --set image.tag="${IMG_TAG}" \
-            -f values.gke.yaml
+            --set image.tag="${{ github.sha }}" \
+            -f deploy/helm/news-semantic-api/values.gke.yaml
