@@ -1,0 +1,12 @@
+image:
+  repository: local/news-semantic-api
+  tag: "dev"
+  pullPolicy: IfNotPresent
+
+qdrant:
+  enabled: true
+  persistence:
+    enabled: false
+
+env:
+  UVICORN_WORKERS: "1"

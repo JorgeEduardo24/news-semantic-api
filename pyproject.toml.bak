@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "news-semantic-api"
+version = "0.1.0"
+description = ""
+authors = ["Jorge Eduardo Jojoa Erazo <jorgeeduardo2410@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+fastapi = "^0.116.1"
+uvicorn = {extras = ["standard"], version = "^0.35.0"}
+pydantic = {extras = ["dotenv"], version = "^2.11.7"}
+qdrant-client = "^1.15.1"
+feedparser = "^6.0.11"
+trafilatura = "^2.0.0"
+beautifulsoup4 = "^4.13.5"
+fastembed = "^0.7.3"
+onnxruntime = "^1.22.1"
+numpy = "2.3.2"
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "supplemental"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+pytest-cov = "^6.3.0"
+ruff = "^0.12.12"
+mypy = "^1.17.1"
+httpx = "^0.28.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+

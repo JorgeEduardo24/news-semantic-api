@@ -1,0 +1,44 @@
+image:
+  repository: us-central1-docker.pkg.dev/news-semantic-api-gcp/news-semantic-api/news-semantic-api
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 8000
+
+ingress:
+  enabled: false  # Para demo usamos Service tipo LB. Puedes activar Ingress más adelante.
+
+resources:
+  requests: { cpu: 200m, memory: 512Mi }
+  limits:   { cpu: "1",  memory: 1Gi }
+
+env:
+  EMBEDDING_BACKEND: "fastembed"
+  MODEL_NAME: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  QDRANT_HOST: ""      # se autocomputa a "<release>-qdrant"
+  QDRANT_PORT: "6333"
+  UVICORN_WORKERS: "2"
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+qdrant:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: "standard-rwo"   # clase por defecto en GKE Autopilot
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+
+config:
+  APP_LOG_LEVEL: "INFO"
+
+secret:
+  enabled: false
+  data: {}

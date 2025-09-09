@@ -1,0 +1,5 @@
+project_id   = "news-semantic-api-471506"
+region       = "us-central1"
+location     = "us-central1"
+repo_name    = "news-semantic-api"
+cluster_name = "news-dev-autopilot"

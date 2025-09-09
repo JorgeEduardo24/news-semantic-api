@@ -1,0 +1,13 @@
+apiVersion: v2
+name: news-semantic-api
+description: API de búsqueda semántica de noticias (FastAPI + Qdrant)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+dependencies:
+  - name: qdrant
+    version: "1.15.4"          
+    repository: "https://qdrant.github.io/qdrant-helm"
+    condition: qdrant.enabled
+

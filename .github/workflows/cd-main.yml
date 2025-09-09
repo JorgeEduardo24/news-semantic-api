@@ -1,0 +1,66 @@
+name: CD Main
+on:
+  push:
+    branches: [ main ]
+
+env:
+  IMAGE_NAME: news-semantic-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'     # requerido para OIDC
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+
+      - name: Install Poetry
+        run: pip install poetry==1.8.3
+
+      - name: Install deps & test
+        run: |
+          poetry install --no-root
+          make fmt && make lint && make test
+
+      - name: Auth to GCP (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.DEPLOYER_SA_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker to Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev -q
+
+      - name: Build & Push image
+        run: |
+          IMAGE_URI="${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          docker build -f deploy/Dockerfile -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          # Opcional: tag 'latest'
+          LATEST="${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest"
+          docker tag "$IMAGE_URI" "$LATEST"
+          docker push "$LATEST"
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials "${{ secrets.GKE_CLUSTER }}" --region "${{ secrets.GCP_REGION }}" --project "${{ secrets.GCP_PROJECT_ID }}"
+
+      - name: Helm dependency update
+        working-directory: deploy/helm/news-semantic-api
+        run: helm dependency update
+
+      - name: Deploy with Helm
+        working-directory: deploy/helm/news-semantic-api
+        run: |
+          helm upgrade --install news-demo . \
+            -f values.gke.yaml \
+            --set image.tag=latest \
+            --set image.repository="${{ secrets.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}"

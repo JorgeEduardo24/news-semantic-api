@@ -1,0 +1,47 @@
+image:
+  repository: ghcr.io/your-org/news-semantic-api
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  hosts:
+    - host: api.example.com
+      path: /
+  tls: []
+
+resources:
+  requests: { cpu: 200m, memory: 512Mi }
+  limits:   { cpu: "1",  memory: 1Gi }
+
+env:
+  EMBEDDING_BACKEND: "fastembed"
+  MODEL_NAME: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  QDRANT_HOST: ""     # si queda vacío, el template usa "<release>-qdrant"
+  QDRANT_PORT: "6333"
+  UVICORN_WORKERS: "2"
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+qdrant:
+  enabled: false
+  persistence:
+    enabled: false
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+
+config:
+  APP_LOG_LEVEL: "INFO"
+
+secret:
+  enabled: false
+  data: {}
