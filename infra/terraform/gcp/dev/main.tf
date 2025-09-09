@@ -17,8 +17,11 @@ resource "google_project_service" "services" {
 resource "google_artifact_registry_repository" "repo" {
   location      = var.location
   repository_id = var.repo_name
-  description   = "News Semantic API images"
+  description   = "News Semantic API images (smoke-test)"
   format        = "DOCKER"
+  labels = {
+    ci-check = "true"
+  }
   depends_on    = [google_project_service.services]
 }
 

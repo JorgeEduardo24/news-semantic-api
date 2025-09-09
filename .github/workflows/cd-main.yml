@@ -12,6 +12,15 @@ jobs:
       contents: read
       id-token: write   # OIDC/WIF
 
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+        options: >-
+          --health-cmd="curl -fsS http://localhost:6333/collections || exit 1"
+          --health-interval=5s --health-retries=30 --health-timeout=5s  
+
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +38,11 @@ jobs:
           poetry install --with dev
 
       - name: Run tests
+        env:
+            EMBEDDING_BACKEND: fastembed
+            MODEL_NAME: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+            QDRANT_HOST: localhost
+            QDRANT_PORT: '6333'
         run: pytest -q
 
       # --- Auth GCP + GAR + GKE ----------------------------------------------
