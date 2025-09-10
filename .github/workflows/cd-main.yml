@@ -108,6 +108,18 @@ jobs:
           cluster_name: ${{ secrets.GKE_CLUSTER }}
           location: ${{ secrets.GKE_REGION }}
 
+      - name: Ensure ServiceMonitor CRD (prometheus-operator-crds)
+        run: |
+          if ! kubectl get crd servicemonitors.monitoring.coreos.com >/dev/null 2>&1; then
+            helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+            helm repo update
+            helm upgrade --install prometheus-operator-crds prometheus-community/prometheus-operator-crds \
+              --namespace monitoring --create-namespace --wait --timeout 10m
+          else
+            echo "ServiceMonitor CRD already present"
+          fi
+
+
       - name: Helm upgrade (API + Qdrant subchart)
         env:
           USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
