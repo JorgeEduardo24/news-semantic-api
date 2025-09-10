@@ -16,10 +16,7 @@ jobs:
       qdrant:
         image: qdrant/qdrant:latest
         ports:
-          - 6333:6333
-        options: >-
-          --health-cmd="curl -fsS http://localhost:6333/collections || exit 1"
-          --health-interval=5s --health-retries=30 --health-timeout=5s  
+          - 6333:6333 
 
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +33,18 @@ jobs:
           poetry config virtualenvs.create false
           # instala dependencias + dev (pytest, etc.)
           poetry install --with dev
+
+      - name: Wait for Qdrant to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:6333/collections >/dev/null; then
+              echo "Qdrant is ready"
+              exit 0
+            fi
+            echo "waiting qdrant ($i/60)"
+            sleep 1
+          done
+          echo "Qdrant not ready"; docker logs ${{ job.services.qdrant.id }}; exit 1
 
       - name: Run tests
         env:
