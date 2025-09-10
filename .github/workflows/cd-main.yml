@@ -69,26 +69,24 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT }}
           install_components: 'gke-gcloud-auth-plugin'
 
-      - name: Configure Artifact Registry Docker auth
-        run: gcloud auth configure-docker ${{ secrets.GKE_REGION }}-docker.pkg.dev -q
-
-      # --- Build & Push image -----------------------------------------------
-      # AR_REPO es SOLO el id del repo (ej. "news-semantic-api"); construimos la ruta completa:
-      - name: Build & push image (AR_REPO = id del repo)
+      # --- Build & Push con ruta completa ------------------------------------
+      - name: Build & push image (AR_REPO_PATH completo)
         env:
-          REGION:  ${{ secrets.GKE_REGION }}
-          PROJECT: ${{ secrets.GCP_PROJECT }}
-          REPO_ID: ${{ secrets.AR_REPO }}
+          AR_REPO_PATH: ${{ secrets.AR_REPO_PATH }}   # ej: us-central1-docker.pkg.dev/PROJECT/repo-id
         run: |
           set -euo pipefail
-          test -f deploy/Dockerfile || { echo "No se encontró deploy/Dockerfile"; ls -la deploy; exit 1; }
+          test -f deploy/Dockerfile || { echo "No se encontró deploy/Dockerfile"; ls -la deploy || true; exit 1; }
 
-          IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO_ID}/news-semantic-api:${GITHUB_SHA}"
+          # Auth docker para el host exacto
+          HOST="${AR_REPO_PATH%%/*}"                        # us-central1-docker.pkg.dev
+          echo "HOST=$HOST"
+          gcloud auth configure-docker "$HOST" -q
+
+          IMAGE="${AR_REPO_PATH}/news-semantic-api:${GITHUB_SHA}"
           echo "IMAGE=$IMAGE"
 
-          # usa el Dockerfile correcto pero mantén el contexto en la raíz
+          # Usa el Dockerfile correcto con contexto en raíz
           docker build -f deploy/Dockerfile -t "$IMAGE" .
-
           docker push "$IMAGE"
 
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
