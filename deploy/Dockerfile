@@ -23,6 +23,13 @@ RUN echo '--- requirements.txt ---' && grep -i '^uvicorn' requirements.txt || (e
 RUN python -m venv /opt/venv && . /opt/venv/bin/activate && \
     pip install --no-cache-dir -r requirements.txt
 
+# ====== Instalar modelo spaCy ES en el venv ======
+RUN . /opt/venv/bin/activate && \
+    python -m pip install --no-cache-dir \
+      https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.7.1/es_core_news_md-3.7.1-py3-none-any.whl && \
+    python -m spacy validate
+# ==========================================================
+
 # Copia código
 COPY api/ api/
 COPY clients/ clients/

@@ -1,0 +1,61 @@
+name: pr-tests
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+        options: >-
+          --health-cmd="curl -fsS http://localhost:6333/ > /dev/null || exit 1"
+          --health-interval=3s
+          --health-timeout=2s
+          --health-retries=40
+
+    env:
+      # Hace que el cliente apunte al servicio efímero
+      QDRANT_HOST: "localhost"
+      QDRANT_PORT: "6333"
+      # (opcional) fuerza backend de embeddings rápido para CI
+      EMBEDDING_BACKEND: "fastembed"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pip install "poetry==1.8.3"
+
+      - name: Enable in-project venv (speeds up caching)
+        run: poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry & pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            ./.venv
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: pr-tests-${{ runner.os }}-py312-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            pr-tests-${{ runner.os }}-py312-
+
+      - name: Install deps
+        run: poetry install --no-interaction --no-ansi
+
+      - name: Run tests
+        run: poetry run pytest -q

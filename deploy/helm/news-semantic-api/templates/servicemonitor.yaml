@@ -1,0 +1,19 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "news-semantic-api.fullname" . }}
+  labels:
+    release: {{ .Values.monitoring.prometheusRelease | default "kube-prometheus-stack" }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "news-semantic-api.name" . }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+{{- end }}

@@ -45,3 +45,10 @@ config:
 secret:
   enabled: false
   data: {}
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+  # Debe coincidir con el "release" (nombre de Helm) de tu kube-prometheus-stack,
+  # ya que Prometheus usa serviceMonitorSelector.matchLabels.release
+  prometheusRelease: kube-prometheus-stack

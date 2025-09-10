@@ -7,6 +7,10 @@ on:
       - 'infra/**'
   workflow_dispatch: {}
 
+concurrency:
+  group: terraform-apply
+  cancel-in-progress: false
+
 jobs:
   apply:
     runs-on: ubuntu-latest
@@ -17,6 +21,8 @@ jobs:
     defaults:
       run:
         working-directory: infra/terraform/gcp/dev
+    env:
+      TF_IN_AUTOMATION: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -29,9 +35,15 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
 
       - name: Terraform Init
         run: terraform init -input=false
 
+      # Opción A (simple): aplicar directo el plan actual
       - name: Terraform Apply
-        run: terraform apply -input=false -auto-approve
+        run: terraform apply -input=false -lock-timeout=60s -auto-approve
+
+      - name: Terraform Outputs (JSON)
+        run: terraform output -json || true
