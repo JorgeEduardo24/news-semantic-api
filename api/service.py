@@ -1,6 +1,6 @@
-# api/service.py
 from typing import Dict, List, Optional
 import hashlib
+import uuid
 
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue, MatchText
 
@@ -14,9 +14,8 @@ from embedding.provider import embed_texts
 
 
 def _id_from_url(url: str) -> str:
-    """ID determinista para idempotencia por URL."""
-    return hashlib.sha1(url.encode("utf-8")).hexdigest()
-
+    """ID determinista (UUID v5) para idempotencia por URL."""
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, url))
 
 def index_one(doc: Dict):
     # forzamos URL a string para payload
