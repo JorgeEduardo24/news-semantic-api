@@ -12,7 +12,6 @@ jobs:
       contents: read
       id-token: write   # OIDC/WIF
 
-    # Envs a nivel de job (recomendado)
     env:
       EMBEDDING_BACKEND: fastembed
       MODEL_NAME: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
@@ -38,7 +37,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
           poetry config virtualenvs.create false
-          # instala dependencias + dev (pytest, etc.)
           poetry install --with dev
 
       - name: Wait for Qdrant to be ready
@@ -52,6 +50,12 @@ jobs:
             sleep 1
           done
           echo "Qdrant not ready"; docker logs ${{ job.services.qdrant.id }}; exit 1
+
+      - name: Install spaCy ES model
+        run: |
+          python -m pip install --no-cache-dir \
+            https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl
+          python -m spacy validate
 
       - name: Run tests
         run: pytest -q
@@ -77,15 +81,13 @@ jobs:
           set -euo pipefail
           test -f deploy/Dockerfile || { echo "No se encontró deploy/Dockerfile"; ls -la deploy || true; exit 1; }
 
-          # Auth docker para el host exacto
-          HOST="${AR_REPO_PATH%%/*}"                        # us-central1-docker.pkg.dev
+          HOST="${AR_REPO_PATH%%/*}"
           echo "HOST=$HOST"
           gcloud auth configure-docker "$HOST" -q
 
           IMAGE="${AR_REPO_PATH}/news-semantic-api:${GITHUB_SHA}"
           echo "IMAGE=$IMAGE"
 
-          # Usa el Dockerfile correcto con contexto en raíz
           docker build -f deploy/Dockerfile -t "$IMAGE" .
           docker push "$IMAGE"
 
