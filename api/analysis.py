@@ -61,6 +61,17 @@ def cosine_matrix(X: np.ndarray) -> np.ndarray:
     Xn = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-9)
     return Xn @ Xn.T
 
+# --- Normalización de fechas para evitar naive vs aware ---
+def _to_utc_aware(d: Optional[dt.datetime]) -> Optional[dt.datetime]:
+    """Devuelve datetime aware en UTC. Si d es None, retorna None."""
+    if d is None:
+        return None
+    if d.tzinfo is None:
+        # si es naive, asumir UTC
+        return d.replace(tzinfo=dt.timezone.utc)
+    # convertir a UTC
+    return d.astimezone(dt.timezone.utc)
+
 def storyline_clusters(
     embeddings: List[List[float]],
     titles: List[str],
@@ -84,12 +95,16 @@ def storyline_clusters(
     model = AgglomerativeClustering(n_clusters=approx_k, metric="precomputed", linkage="average")
     labels = model.fit_predict(D)
 
+    # Normaliza fechas a UTC aware para ordenar sin errores
+    dates_utc = [_to_utc_aware(d) for d in dates]
+    utc_min = dt.datetime.min.replace(tzinfo=dt.timezone.utc)
+
     # Armar clusters y ordenarlos temporalmente
     clusters: List[List[int]] = []
     for lab in sorted(set(labels)):
         idxs = [i for i, l in enumerate(labels) if l == lab]
-        idxs.sort(key=lambda i: (dates[i] or dt.datetime.min))
+        idxs.sort(key=lambda i: (dates_utc[i] or utc_min))
         clusters.append(idxs)
 
-    clusters.sort(key=lambda idxs: (dates[idxs[0]] or dt.datetime.min))
+    clusters.sort(key=lambda idxs: (dates_utc[idxs[0]] or utc_min))
     return clusters
