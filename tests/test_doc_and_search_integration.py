@@ -6,6 +6,7 @@ from api.service import index_one
 
 pytestmark = pytest.mark.integration
 
+# Levanta la colección de noticias
 def qdrant_available():
     try:
         ensure_collection()

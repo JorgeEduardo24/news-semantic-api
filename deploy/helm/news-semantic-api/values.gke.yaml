@@ -8,7 +8,7 @@ service:
   port: 8000
 
 ingress:
-  enabled: false  # Para demo usamos Service tipo LB. Puedes activar Ingress más adelante.
+  enabled: false  
 
 resources:
   requests: { cpu: 250m, memory: 1Gi }
@@ -57,7 +57,6 @@ secret:
   enabled: false
   data: {}
 
-# Habilita ServiceMonitor para Prometheus (si instalaste los CRDs / stack)
 monitoring:
   serviceMonitor:
     enabled: true

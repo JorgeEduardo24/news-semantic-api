@@ -25,11 +25,14 @@ from .analysis import (
 # -----------------------------------
 # Utilidades internas
 # -----------------------------------
+
+# Si se indexa la misma URL dos veces, se reemplaza el mismo ID en Qdrant
 def _id_from_url(url: str) -> str:
     """ID determinista (UUID v5) para idempotencia por URL."""
     return str(uuid.uuid5(uuid.NAMESPACE_URL, url))
 
 
+# Normalizar fechas para poder filtrar y ordenar
 def _maybe_parse_dt(value: Any) -> Optional[dt.datetime]:
     """Convierte cadenas ISO8601/fecha a datetime; devuelve None en fallos."""
     if value is None:
@@ -51,6 +54,8 @@ def _maybe_parse_dt(value: Any) -> Optional[dt.datetime]:
     return None
 
 
+# Aplicar un filtro por rango de fechas sobre published_at en memoria
+# Resolver rápido el requisito de fechas sin depender de filtros avanzados en Qdrant
 def _filter_by_date(results: List[Dict], date_from: Optional[str] = None, date_to: Optional[str] = None) -> List[Dict]:
     """Filtra por published_at en el intervalo [date_from, date_to]."""
     if not date_from and not date_to:
@@ -75,7 +80,7 @@ def _filter_by_date(results: List[Dict], date_from: Optional[str] = None, date_t
 
 
 # -----------------------------------
-# Ingesta / Indexación
+# Ingesta Qdrant / Indexación
 # -----------------------------------
 def index_one(doc: Dict):
     """
@@ -176,6 +181,8 @@ def get_topn_for_query(
 # -----------------------------------
 # Builders: /storyline, /analysis/perspective, /graph/entities
 # -----------------------------------
+
+# filtro por fechas en memoria
 def build_storyline(
     q: str,
     k: int = 20,
@@ -230,6 +237,7 @@ def build_storyline(
     return StorylineResponse(query=q, clusters=clusters)
 
 
+# Agrupa por source
 def build_perspective(
     q: str,
     sources_filter: Optional[List[str]] = None,
@@ -288,6 +296,7 @@ def build_perspective(
     res_sorted = sorted(res, key=lambda s: s.volume, reverse=True)
     return PerspectiveResponse(query=q, sources=res_sorted)
 
+# grafo de co-ocurrencias de entidades a nivel documento
 def build_graph(
     q: str,
     k: int = 30,
@@ -325,5 +334,3 @@ def build_graph(
     nodes = [GraphNode(id=k_, label=k_, type=types.get(k_, "MISC")) for k_ in sorted(types.keys())]
     edges = [GraphEdge(source=a, target=b, weight=w) for (a, b), w in co.most_common(200)]
     return GraphResponse(query=q, nodes=nodes, edges=edges)
-
-

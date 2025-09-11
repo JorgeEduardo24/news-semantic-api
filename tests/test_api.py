@@ -1,20 +1,18 @@
 import os
 
-os.environ["EMBEDDING_BACKEND"] = "hashing"  # rápido y sin red para test
-
+os.environ["EMBEDDING_BACKEND"] = "hashing"  # rápido y sin red para test (nO DESCARGA DE LOS MODELOS)
 from fastapi.testclient import TestClient
-
 from api.main import app
 
 client = TestClient(app)
 
-
+# Pruebas Unitarias
 def test_healthz():
     r = client.get("/healthz")
     assert r.status_code == 200
     assert r.json()["ok"] is True
 
-
+# Valida que vuelve al menos 1 resultado
 def test_index_and_search():
     doc = {
         "title": "Demo",

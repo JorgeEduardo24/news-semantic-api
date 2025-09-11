@@ -19,9 +19,6 @@ resource "google_artifact_registry_repository" "repo" {
   repository_id = var.repo_name
   description   = "News Semantic API images (smoke-test)"
   format        = "DOCKER"
-  labels = {
-    ci-check = "true"
-  }
   depends_on    = [google_project_service.services]
 }
 
@@ -41,13 +38,13 @@ resource "google_container_cluster" "autopilot" {
 }
 
 
-# WIF: Pool + Provider OIDC de GitHub
+# WIF: Pool + Provider OIDC de GitHub - evitar llaves JSON. El pipeline se autentica por OIDC
 resource "google_iam_workload_identity_pool" "github_pool" {
   workload_identity_pool_id = "github-pool"
   display_name              = "GitHub OIDC Pool"
   depends_on                = [google_project_service.services]
 }
-
+#Toma y confía en los tokens de git hub actions
 resource "google_iam_workload_identity_pool_provider" "github_provider" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
   workload_identity_pool_provider_id = "github"

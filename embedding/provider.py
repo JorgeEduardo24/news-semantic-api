@@ -20,13 +20,14 @@ BACKEND = BACKEND.strip().lower()
 if BACKEND in ("hashing", "hash"):
     BACKEND = "fastembed"
 
-# Modelo por defecto (384 dims para MiniLM)
+# Modelo SBERT que mapea a 384 dims para MiniLM
 MODEL_NAME = os.getenv(
     "MODEL_NAME",
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
 )
 
 
+# Por cada vector, divide por su norma. Para medir similitud coseno de forma estable
 def _l2_normalize(mat: np.ndarray) -> np.ndarray:
     """Normaliza por fila (evita división por cero)."""
     if mat.size == 0:
@@ -101,6 +102,7 @@ else:
 # ------------------------------
 # API conveniente (single/batch)
 # ------------------------------
+# devuelve un vector (lista de floats) normalizado
 def embed(text: str) -> List[float]:
     """
     Embedding para un solo texto. Devuelve lista[float] L2-normalizada.
@@ -111,7 +113,7 @@ def embed(text: str) -> List[float]:
         return []
     return arr[0].tolist()
 
-
+# devuelve una lista de vectores normalizados.
 def embed_batch(texts: List[str]) -> List[List[float]]:
     """
     Embedding por lotes. Devuelve lista de listas (n, d) L2-normalizada.
@@ -122,7 +124,7 @@ def embed_batch(texts: List[str]) -> List[List[float]]:
     arr = embed_texts(texts)
     return arr.tolist()
 
-
+# Ayuda a IDEs/linters a saber qué es la API oficial
 __all__ = [
     "embed_texts",  # np.ndarray (n,d) float32 normalizado
     "embed",        # List[float]

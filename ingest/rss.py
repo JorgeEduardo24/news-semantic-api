@@ -12,7 +12,7 @@ from api.service import index_one  # Orquestador existente: hace embedding + ups
 
 log = logging.getLogger(__name__)
 
-
+# Evitar repetidos dentro de la misma ejecución
 def _dedup(url: str) -> str:
     """Hash estable para deduplicar por URL dentro de una ejecución."""
     return hashlib.sha1(url.encode("utf-8")).hexdigest()

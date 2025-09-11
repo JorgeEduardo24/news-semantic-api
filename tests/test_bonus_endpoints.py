@@ -1,8 +1,8 @@
 import pytest
 from api.service import build_storyline, build_perspective, build_graph
-
+#Monkeypatch -> Inyectar datos falsos
+#Verifica que el formato de salida (estructura de datos) sea correcto
 def test_storyline_shapes(monkeypatch):
-    # Parchea get_topn_for_query para no depender de Qdrant en unit test:
     from api import service as S
     fake_docs = [
         {"title":"Argentina gana","url":"http://a/1","source":"foo","content":"Argentina celebra la victoria","published_at":"2024-01-02T00:00:00"},
@@ -15,6 +15,7 @@ def test_storyline_shapes(monkeypatch):
     assert len(res.clusters) >= 1
     assert len(res.clusters[0].items) >= 1
 
+#Asegura que el builder agrupa por fuente
 def test_perspective_basic(monkeypatch):
     from api import service as S
     fake_docs = [
@@ -27,6 +28,7 @@ def test_perspective_basic(monkeypatch):
     assert {s.source for s in res.sources} == {"foo","bar"}
     assert all(isinstance(s.avg_sentiment, float) for s in res.sources)
 
+#Confirma que el builder devuelve una estructura de grafo válida
 def test_graph_basic(monkeypatch):
     from api import service as S
     fake_docs = [

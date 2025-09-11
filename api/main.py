@@ -24,6 +24,8 @@ app = FastAPI(title="News Semantic API", version="0.2.0")
 # -----------------------------
 # Modelos existentes (públicos)
 # -----------------------------
+
+# Definen lo que recibes al indexar (ArticleIn) 
 class ArticleIn(BaseModel):
     title: str
     url: HttpUrl
@@ -32,7 +34,7 @@ class ArticleIn(BaseModel):
     content: str
     language: Optional[str] = "es"
 
-
+# Define lo que devuelves al buscar (SearchResult)
 class SearchResult(BaseModel):
     title: str
     url: HttpUrl
@@ -53,7 +55,7 @@ SEARCH_LATENCY = Histogram("search_latency_seconds", "Latencia de /search en seg
 Instrumentator().instrument(app).expose(app, include_in_schema=False, endpoint="/metrics")
 
 # -----------------------------
-# Startup: esperar Qdrant + /metrics
+# Startup: Antes de aceptar tráfico, esperar Qdrant + /metrics
 # -----------------------------
 @app.on_event("startup")
 def _init_collections():
@@ -83,7 +85,7 @@ def healthz():
 def readyz():
     return {"ready": True}
 
-
+# Se está creando/actualizando recursos (puntos) en la base vectorial
 @app.post("/index")
 def index_article(item: ArticleIn):
     """
@@ -93,6 +95,7 @@ def index_article(item: ArticleIn):
     index_one(item.model_dump())
     INDEX_TOTAL.inc()
     return {"indexed": True, "url": str(item.url)}
+
 
 
 @app.get("/search", response_model=List[SearchResult])

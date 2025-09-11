@@ -72,6 +72,7 @@ def _to_utc_aware(d: Optional[dt.datetime]) -> Optional[dt.datetime]:
     # convertir a UTC
     return d.astimezone(dt.timezone.utc)
 
+# crear grupos (clusters) de noticias similares y ordenados por fecha para /storyline
 def storyline_clusters(
     embeddings: List[List[float]],
     titles: List[str],

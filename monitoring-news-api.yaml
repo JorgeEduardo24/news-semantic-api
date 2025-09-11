@@ -1,0 +1,14 @@
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: news-api
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: news-semantic-api
+      app.kubernetes.io/instance: news-demo
+  endpoints:
+    - port: 8000   # tu contenedor expone 8000 (no usas nombre 'http')
+      path: /metrics
+      interval: 30s
