@@ -11,7 +11,7 @@ from prometheus_client import Counter, Histogram
 from clients.qdrant_client import ensure_collection
 from ingest.rss import ingest_feed
 
-# Servicio (lo existente)
+# Servicio 
 from api.service import index_one, search_query, get_doc_by_url
 # Builders BONUS
 from api.service import build_storyline, build_perspective, build_graph
@@ -50,6 +50,7 @@ SEARCH_TOTAL = Counter("search_total", "Total de búsquedas semánticas")
 INGEST_TOTAL = Counter("ingest_total", "Total de ingestas realizadas")
 SEARCH_LATENCY = Histogram("search_latency_seconds", "Latencia de /search en segundos")
 
+Instrumentator().instrument(app).expose(app, include_in_schema=False, endpoint="/metrics")
 
 # -----------------------------
 # Startup: esperar Qdrant + /metrics
@@ -68,8 +69,6 @@ def _init_collections():
     else:
         raise RuntimeError(f"Qdrant no se pudo inicializar a tiempo: {last}")
 
-    # Instrumentación Prometheus en /metrics (sin aparecer en OpenAPI)
-    Instrumentator().instrument(app).expose(app, include_in_schema=False, endpoint="/metrics")
 
 
 # -----------------------------
