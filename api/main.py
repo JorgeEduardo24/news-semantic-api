@@ -209,6 +209,7 @@ def get_graph(
 ):
     """
     Grafo de co-ocurrencia de entidades principales (a nivel documento).
+    _________
     """
     filters = {
         "title_contains": title_contains,
