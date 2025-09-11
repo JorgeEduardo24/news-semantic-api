@@ -11,21 +11,35 @@ ingress:
   enabled: false  # Para demo usamos Service tipo LB. Puedes activar Ingress más adelante.
 
 resources:
-  requests: { cpu: 200m, memory: 512Mi }
-  limits:   { cpu: "1",  memory: 1Gi }
+  requests: { cpu: 250m, memory: 1Gi }
+  limits:   { cpu: "1",  memory: 2Gi }
 
 env:
   EMBEDDING_BACKEND: "fastembed"
   MODEL_NAME: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
   QDRANT_HOST: ""      # se autocomputa a "<release>-qdrant"
   QDRANT_PORT: "6333"
-  UVICORN_WORKERS: "2"
+  UVICORN_WORKERS: "1" # <- un solo worker para no duplicar memoria de modelos
 
 autoscaling:
   enabled: true
-  minReplicas: 1
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 80
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 75
+
+# (Opcional) Solo tiene efecto si tus templates lo soportan.
+# Si no los usan, este bloque es inofensivo.
+probes:
+  readiness:
+    initialDelaySeconds: 25
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  liveness:
+    initialDelaySeconds: 35
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
 
 qdrant:
   enabled: true
@@ -42,3 +56,9 @@ config:
 secret:
   enabled: false
   data: {}
+
+# Habilita ServiceMonitor para Prometheus (si instalaste los CRDs / stack)
+monitoring:
+  serviceMonitor:
+    enabled: true
+  prometheusRelease: kube-prometheus-stack
